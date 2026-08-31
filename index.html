@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b0d">
+  <title>Consulta de O.S. | Prado Celulares</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --bg:#0b0b0d; --card:#17171b; --card-2:#202025; --ink:#f4f1e8; --muted:#b9b7b1; --gold:#d4af37; --line:rgba(212,175,55,.42); --green:#65cb89; --red:#fa7676; }
+    * { box-sizing:border-box; }
+    body { min-height:100vh; margin:0; background:var(--bg); color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+    body::before { content:""; position:fixed; inset:0; z-index:-2; background:url('background.gif') center/cover no-repeat; }
+    body::after { content:""; position:fixed; inset:0; z-index:-1; background:linear-gradient(rgba(5,5,7,.82),rgba(5,5,7,.9)),radial-gradient(circle at 50% -15%,rgba(103,78,8,.58) 0,transparent 42%); }
+    main { position:relative; z-index:0; width:min(100% - 32px,560px); margin:0 auto; padding:52px 0 36px; }
+    .brand { display:flex; align-items:center; justify-content:center; gap:10px; color:var(--gold); font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
+    .brand::before,.brand::after { content:""; width:32px; height:1px; background:var(--gold); }
+    h1 { margin:18px 0 9px; text-align:center; font-size:clamp(27px,7vw,38px); line-height:1.05; letter-spacing:-1px; }
+    .intro { max-width:410px; margin:0 auto 28px; text-align:center; color:var(--muted); font-size:15px; line-height:1.5; }
+    .panel { padding:22px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.015)); box-shadow:0 20px 48px rgba(0,0,0,.25); }
+    label { display:block; margin-bottom:8px; font-size:12px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); }
+    form { display:flex; gap:9px; }
+    input { min-width:0; flex:1; border:1px solid #60605c; border-radius:9px; background:#111114; color:var(--ink); padding:13px 14px; font-size:18px; font-weight:800; letter-spacing:1px; text-transform:uppercase; outline:none; }
+    input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,175,55,.15); }
+    button { border:1px solid var(--gold); border-radius:9px; background:var(--gold); color:#17130a; padding:0 17px; font-weight:900; cursor:pointer; transition:.18s transform,.18s opacity; }
+    button:hover { transform:translateY(-1px); } button:disabled { cursor:wait; opacity:.65; transform:none; }
+    .example { margin:10px 1px 0; color:#96948d; font-size:12px; }
+    #result { margin-top:20px; }
+    .notice { border-radius:11px; padding:14px; line-height:1.45; font-size:14px; }
+    .notice.loading { color:var(--muted); background:rgba(255,255,255,.05); } .notice.error { color:#ffd8d8; background:rgba(207,63,63,.16); border:1px solid rgba(250,118,118,.45); }
+    .os-card { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:var(--card); }
+    .os-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:19px 19px 16px; border-bottom:1px solid rgba(255,255,255,.1); }
+    .eyebrow { margin-bottom:4px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    .code { font-family:Consolas,monospace; font-size:23px; font-weight:800; letter-spacing:1px; }
+    .status { flex:0 0 auto; max-width:52%; padding:7px 9px; border:1px solid var(--line); border-radius:999px; color:#fff4c8; background:rgba(212,175,55,.09); text-align:center; font-size:12px; font-weight:800; }
+    .details { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:rgba(255,255,255,.1); }
+    .detail { min-height:73px; padding:13px 18px; background:var(--card); } .detail strong { display:block; margin-top:4px; font-size:14px; line-height:1.25; }
+    .timeline { padding:20px 19px 18px; }
+    .timeline h2 { margin:0 0 15px; font-size:14px; } .step { position:relative; display:flex; gap:11px; padding-bottom:13px; color:#85837e; font-size:13px; }
+    .step:last-child { padding-bottom:0; } .dot { position:relative; z-index:1; flex:0 0 12px; height:12px; margin-top:2px; border:2px solid #77756d; border-radius:50%; background:var(--card); }
+    .step:not(:last-child)::before { content:""; position:absolute; left:5px; top:14px; bottom:0; width:2px; background:#46453f; }
+    .step.done,.step.current { color:var(--ink); font-weight:700; } .step.done .dot { border-color:var(--green); background:var(--green); } .step.current .dot { border-color:var(--gold); background:var(--gold); box-shadow:0 0 0 4px rgba(212,175,55,.15); }
+    .status-message { margin:0 19px 19px; padding:12px; border-left:2px solid var(--gold); background:rgba(212,175,55,.07); color:#e5e0d3; font-size:13px; line-height:1.45; }
+    footer { margin-top:26px; color:#8e8c85; text-align:center; font-size:12px; line-height:1.45; }
+    @media (max-width:410px) { main { width:min(100% - 22px,560px); padding-top:36px; } .panel { padding:16px; } form { display:block; } button { width:100%; height:46px; margin-top:9px; } .os-top { padding:16px; } .details { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">Prado Celulares</div>
+    <h1>Acompanhe seu aparelho</h1>
+    <p class="intro">Digite o código completo do cupom ou somente os quatro últimos caracteres para consultar o andamento da sua ordem de serviço.</p>
+    <section class="panel" aria-label="Consulta de ordem de serviço">
+      <label for="code">Código da O.S.</label>
+      <form id="lookupForm">
+        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="30" required>
+        <button id="searchButton" type="submit">Consultar</button>
+      </form>
+      <p class="example">Ex.: E457 ou o código completo OS260831-E457.</p>
+      <div id="result" aria-live="polite"></div>
+    </section>
+    <footer>Em caso de dúvida, entre em contato com a loja e informe o código da sua O.S.</footer>
+  </main>
+  <script>
+    // Esta página consulta apenas dados seguros para o cliente. A tabela no Supabase
+    // deve ter uma política pública/RPC que permita somente esta consulta por código.
+    const SUPABASE_URL = 'https://tfnwojtykhapgjhljxve.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmbndvanR5a2hhcGdqaGxqeHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDI4NDAsImV4cCI6MjEwMjIxODg0MH0.HCDfHQodhpVla_9E5aGIYcY1edAPAYBumoFlvkS8x3c';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const result = document.getElementById('result');
+    const input = document.getElementById('code');
+    const form = document.getElementById('lookupForm');
+    const button = document.getElementById('searchButton');
+
+    const stages = ['Orçando', 'Aguardando aprov', 'Orç aprovado', 'Pronto', 'Aparelho retirado'];
+    const messages = {
+      'Orçando':'Seu aparelho está em avaliação para elaboração do orçamento.',
+      'Aguardando aprov':'O orçamento está pronto e aguardamos sua aprovação.',
+      'Orç aprovado':'Seu orçamento foi aprovado. O reparo está sendo organizado.',
+      'Pronto':'Seu aparelho está pronto para retirada. Fale com a loja antes de vir.',
+      'Aparelho retirado':'Esta ordem de serviço já foi concluída com a retirada do aparelho.',
+      'Orçamento reprovado':'O orçamento não foi aprovado. Para mais informações, fale com a loja.',
+      'Em Custódia':'Seu aparelho está sob custódia da loja. Entre em contato para orientações.'
+    };
+    const escapeHTML = value => String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const formatDate = value => {
+      if (!value) return '—';
+      const date = new Date(value + (String(value).includes('T') ? '' : 'T12:00:00'));
+      return Number.isNaN(date.getTime()) ? escapeHTML(value) : date.toLocaleDateString('pt-BR');
+    };
+    function showNotice(text, type) { result.innerHTML = `<div class="notice ${type}">${text}</div>`; }
+    function timeline(status) {
+      if (status === 'Orçamento reprovado' || status === 'Em Custódia') return '';
+      const activeIndex = stages.indexOf(status);
+      return `<div class="timeline"><h2>Etapas do atendimento</h2>${stages.map((stage, i) => {
+        const state = i < activeIndex ? 'done' : i === activeIndex ? 'current' : '';
+        return `<div class="step ${state}"><span class="dot"></span><span>${stage}</span></div>`;
+      }).join('')}</div>`;
+    }
+    function renderOS(os) {
+      const code = escapeHTML(os.codigo);
+      const status = escapeHTML(os.status || 'Em análise');
+      result.innerHTML = `<article class="os-card">
+        <div class="os-top"><div><div class="eyebrow">Ordem de serviço</div><div class="code">${code}</div></div><div class="status">${status}</div></div>
+        <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div></div>
+        ${timeline(os.status)}
+        <p class="status-message">${escapeHTML(messages[os.status] || 'Acompanhe o andamento por esta página ou fale com a loja.')}</p>
+      </article>`;
+    }
+    input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''); });
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const code = input.value.trim().toUpperCase();
+      if (!code) return;
+      button.disabled = true; button.textContent = 'Consultando...'; showNotice('Buscando sua ordem de serviço...', 'loading');
+      try {
+        const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code }).maybeSingle();
+        if (error) throw error;
+        if (!data) showNotice('Não encontramos uma O.S. com esse código. Confira o cupom e tente novamente.', 'error');
+        else renderOS(data);
+      } catch (error) {
+        console.error(error);
+        showNotice('Não foi possível consultar agora. Tente novamente em alguns instantes.', 'error');
+      } finally { button.disabled = false; button.textContent = 'Consultar'; }
+    });
+  </script>
+</body>
+</html>
