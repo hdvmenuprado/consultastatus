@@ -55,14 +55,14 @@
     </aside>
     <div class="brand">Prado Celulares</div>
     <h1>Acompanhe seu aparelho</h1>
-    <p class="intro">Digite o código completo do cupom ou somente os quatro últimos caracteres para consultar o andamento da sua ordem de serviço.</p>
+    <p class="intro">Digite os 4 últimos caracteres do código que está no seu cupom, depois do traço, para consultar o andamento da sua ordem de serviço.</p>
     <section class="panel" aria-label="Consulta de ordem de serviço">
-      <label for="code">Código da O.S.</label>
+      <label for="code">Últimos 4 caracteres do código</label>
       <form id="lookupForm">
-        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="30" required>
+        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="4" required>
         <button id="searchButton" type="submit">Consultar</button>
       </form>
-      <p class="example">Ex.: E457 ou o código completo OS260831-E457.</p>
+      <p class="example">Está no seu cupom, depois do traço. Ex.: em OS260831-E457, digite apenas E457.</p>
       <div id="result" aria-live="polite"></div>
     </section>
     <footer>Em caso de dúvida, entre em contato com a loja e informe o código da sua O.S.</footer>
@@ -94,6 +94,11 @@
       const date = new Date(value + (String(value).includes('T') ? '' : 'T12:00:00'));
       return Number.isNaN(date.getTime()) ? escapeHTML(value) : date.toLocaleDateString('pt-BR');
     };
+    const formatMoeda = value => {
+      const n = parseFloat(value);
+      if (!n || Number.isNaN(n)) return null;
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
     function showNotice(text, type) { result.innerHTML = `<div class="notice ${type}">${text}</div>`; }
     function timeline(status) {
       if (status === 'Orçamento reprovado' || status === 'Em Custódia') return '';
@@ -106,17 +111,28 @@
     function renderOS(os) {
       const code = escapeHTML(os.codigo);
       const status = escapeHTML(os.status || 'Em análise');
+      const valor = formatMoeda(os.total);
+      const valorHtml = valor
+        ? `<div class="detail"><div class="eyebrow">Valor do orçamento</div><strong>${escapeHTML(valor)}</strong></div>`
+        : '';
       result.innerHTML = `<article class="os-card">
         <div class="os-top"><div><div class="eyebrow">Ordem de serviço</div><div class="code">${code}</div></div><div class="status">${status}</div></div>
-        <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div></div>
+        <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div>${valorHtml}</div>
         ${timeline(os.status)}
         <p class="status-message">${escapeHTML(messages[os.status] || 'Acompanhe o andamento por esta página ou fale com a loja.')}</p>
       </article>`;
     }
-    input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''); });
+    input.addEventListener('input', () => {
+      // Aceita colar o código completo (ex: OS260831-E457) e já reduz pros 4 últimos caracteres.
+      let v = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      if (v.includes('-')) v = v.split('-').pop();
+      input.value = v.slice(-4);
+    });
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      const code = input.value.trim().toUpperCase();
+      let code = input.value.trim().toUpperCase();
+      if (code.includes('-')) code = code.split('-').pop();
+      code = code.slice(-4);
       if (!code) return;
       button.disabled = true; button.textContent = 'Consultando...'; showNotice('Buscando sua ordem de serviço...', 'loading');
       try {
