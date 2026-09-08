@@ -115,9 +115,12 @@
       const valorHtml = valor
         ? `<div class="detail"><div class="eyebrow">Valor do orçamento</div><strong>${escapeHTML(valor)}</strong></div>`
         : '';
+      const reparoHtml = os.reparo
+        ? `<div class="detail"><div class="eyebrow">O que vai ser reparado</div><strong>${escapeHTML(os.reparo)}</strong></div>`
+        : '';
       result.innerHTML = `<article class="os-card">
         <div class="os-top"><div><div class="eyebrow">Ordem de serviço</div><div class="code">${code}</div></div><div class="status">${status}</div></div>
-        <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div>${valorHtml}</div>
+        <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div>${reparoHtml}${valorHtml}</div>
         ${timeline(os.status)}
         <p class="status-message">${escapeHTML(messages[os.status] || 'Acompanhe o andamento por esta página ou fale com a loja.')}</p>
       </article>`;
