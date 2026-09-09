@@ -20,7 +20,9 @@
     .intro { max-width:410px; margin:0 auto 28px; text-align:center; color:var(--muted); font-size:15px; line-height:1.5; }
     .panel { padding:22px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.015)); box-shadow:0 20px 48px rgba(0,0,0,.25); }
     label { display:block; margin-bottom:8px; font-size:12px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); }
-    form { display:flex; gap:9px; }
+    form { display:flex; flex-wrap:wrap; gap:9px; }
+    form input { flex:1 1 140px; }
+    form button { flex:1 1 100%; }
     input { min-width:0; flex:1; border:1px solid #60605c; border-radius:9px; background:#111114; color:var(--ink); padding:13px 14px; font-size:18px; font-weight:800; letter-spacing:1px; text-transform:uppercase; outline:none; }
     input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,175,55,.15); }
     button { border:1px solid var(--gold); border-radius:9px; background:var(--gold); color:#17130a; padding:0 17px; font-weight:900; cursor:pointer; transition:.18s transform,.18s opacity; }
@@ -55,14 +57,15 @@
     </aside>
     <div class="brand">Prado Celulares</div>
     <h1>Acompanhe seu aparelho</h1>
-    <p class="intro">Digite os 4 últimos caracteres do código que está no seu cupom, depois do traço, para consultar o andamento da sua ordem de serviço.</p>
+    <p class="intro">Digite os 4 últimos caracteres do código que está no seu cupom e os 4 últimos dígitos do seu telefone para consultar o andamento da sua ordem de serviço.</p>
     <section class="panel" aria-label="Consulta de ordem de serviço">
       <label for="code">Últimos 4 caracteres do código</label>
       <form id="lookupForm">
         <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="4" required>
+        <input id="phone" name="phone" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="Últimos 4 dígitos do telefone" maxlength="4" required style="text-transform:none;">
         <button id="searchButton" type="submit">Consultar</button>
       </form>
-      <p class="example">Está no seu cupom, depois do traço. Ex.: em OS260831-E457, digite apenas E457.</p>
+      <p class="example">Código: está no seu cupom, depois do traço. Ex.: em OS260831-E457, digite apenas E457. Telefone: os 4 últimos dígitos do número que você deixou na loja.</p>
       <div id="result" aria-live="polite"></div>
     </section>
     <footer>Em caso de dúvida, entre em contato com a loja e informe o código da sua O.S.</footer>
@@ -75,6 +78,7 @@
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const result = document.getElementById('result');
     const input = document.getElementById('code');
+    const phoneInput = document.getElementById('phone');
     const form = document.getElementById('lookupForm');
     const button = document.getElementById('searchButton');
 
@@ -131,17 +135,21 @@
       if (v.includes('-')) v = v.split('-').pop();
       input.value = v.slice(-4);
     });
+    phoneInput.addEventListener('input', () => {
+      phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(-4);
+    });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       let code = input.value.trim().toUpperCase();
       if (code.includes('-')) code = code.split('-').pop();
       code = code.slice(-4);
-      if (!code) return;
+      const phone = phoneInput.value.trim().replace(/\D/g, '').slice(-4);
+      if (!code || phone.length !== 4) return;
       button.disabled = true; button.textContent = 'Consultando...'; showNotice('Buscando sua ordem de serviço...', 'loading');
       try {
-        const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code }).maybeSingle();
+        const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code, p_telefone_final: phone }).maybeSingle();
         if (error) throw error;
-        if (!data) showNotice('Não encontramos uma O.S. com esse código. Confira o cupom e tente novamente.', 'error');
+        if (!data) showNotice('Não encontramos uma O.S. com esse código e telefone. Confira os dados e tente novamente.', 'error');
         else renderOS(data);
       } catch (error) {
         console.error(error);
