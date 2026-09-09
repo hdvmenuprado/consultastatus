@@ -57,15 +57,16 @@
     </aside>
     <div class="brand">Prado Celulares</div>
     <h1>Acompanhe seu aparelho</h1>
-    <p class="intro">Digite os 4 últimos caracteres do código que está no seu cupom e os 4 últimos dígitos do seu telefone para consultar o andamento da sua ordem de serviço.</p>
+    <p class="intro">Digite o código do seu cupom e seu telefone pra ver o andamento.</p>
     <section class="panel" aria-label="Consulta de ordem de serviço">
-      <label for="code">Últimos 4 caracteres do código</label>
+      <label for="code">Código (4 últimos caracteres)</label>
+      <label for="phone" style="margin-top:-4px;">Telefone (4 últimos dígitos)</label>
       <form id="lookupForm">
         <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="4" required>
-        <input id="phone" name="phone" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="Últimos 4 dígitos do telefone" maxlength="4" required style="text-transform:none;">
+        <input id="phone" name="phone" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="Ex.: 9821" maxlength="4" required style="text-transform:none;">
         <button id="searchButton" type="submit">Consultar</button>
       </form>
-      <p class="example">Código: está no seu cupom, depois do traço. Ex.: em OS260831-E457, digite apenas E457. Telefone: os 4 últimos dígitos do número que você deixou na loja.</p>
+      <p class="example">Código: está no seu cupom, depois do traço (ex.: OS260831-<b>E457</b>).</p>
       <div id="result" aria-live="polite"></div>
     </section>
     <footer>Em caso de dúvida, entre em contato com a loja e informe o código da sua O.S.</footer>
