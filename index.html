@@ -57,16 +57,14 @@
     </aside>
     <div class="brand">Prado Celulares</div>
     <h1>Acompanhe seu aparelho</h1>
-    <p class="intro">Digite o código do seu cupom e seu telefone pra ver o andamento.</p>
+    <p class="intro">Digite o código do seu cupom pra ver o andamento.</p>
     <section class="panel" aria-label="Consulta de ordem de serviço">
-      <label for="code">Código (4 últimos caracteres)</label>
-      <label for="phone" style="margin-top:-4px;">Telefone (4 últimos dígitos)</label>
+      <label for="code">Código da O.S.</label>
       <form id="lookupForm">
-        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: E457" maxlength="4" required>
-        <input id="phone" name="phone" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="Ex.: 9821" maxlength="4" required style="text-transform:none;">
+        <input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: OS260831-E457" maxlength="16" required>
         <button id="searchButton" type="submit">Consultar</button>
       </form>
-      <p class="example">Código: está no seu cupom, depois do traço (ex.: OS260831-<b>E457</b>).</p>
+      <p class="example">O código está no seu cupom, no topo (ex.: <b>OS260831-E457</b>). Digite ele inteiro.</p>
       <div id="result" aria-live="polite"></div>
     </section>
     <footer>Em caso de dúvida, entre em contato com a loja e informe o código da sua O.S.</footer>
@@ -79,7 +77,6 @@
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const result = document.getElementById('result');
     const input = document.getElementById('code');
-    const phoneInput = document.getElementById('phone');
     const form = document.getElementById('lookupForm');
     const button = document.getElementById('searchButton');
 
@@ -131,26 +128,22 @@
       </article>`;
     }
     input.addEventListener('input', () => {
-      // Aceita colar o código completo (ex: OS260831-E457) e já reduz pros 4 últimos caracteres.
-      let v = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-      if (v.includes('-')) v = v.split('-').pop();
-      input.value = v.slice(-4);
-    });
-    phoneInput.addEventListener('input', () => {
-      phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(-4);
+      // Deixa só o que faz parte do código, mantendo o traço.
+      input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      let code = input.value.trim().toUpperCase();
-      if (code.includes('-')) code = code.split('-').pop();
-      code = code.slice(-4);
-      const phone = phoneInput.value.trim().replace(/\D/g, '').slice(-4);
-      if (!code || phone.length !== 4) return;
+      const code = input.value.trim().toUpperCase();
+      // O código completo identifica a O.S. sozinho, sem precisar do telefone.
+      if (!code.includes('-') || code.length < 8) {
+        showNotice('Digite o código completo do cupom, com o traço (ex.: OS260831-E457).', 'error');
+        return;
+      }
       button.disabled = true; button.textContent = 'Consultando...'; showNotice('Buscando sua ordem de serviço...', 'loading');
       try {
-        const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code, p_telefone_final: phone }).maybeSingle();
+        const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code }).maybeSingle();
         if (error) throw error;
-        if (!data) showNotice('Não encontramos uma O.S. com esse código e telefone. Confira os dados e tente novamente.', 'error');
+        if (!data) showNotice('Não encontramos nenhuma O.S. com esse código. Confira no seu cupom e tente novamente.', 'error');
         else renderOS(data);
       } catch (error) {
         console.error(error);
