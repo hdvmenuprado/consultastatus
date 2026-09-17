@@ -38,6 +38,19 @@
     .status { flex:0 0 auto; max-width:52%; padding:7px 9px; border:1px solid var(--line); border-radius:999px; color:#fff4c8; background:rgba(212,175,55,.09); text-align:center; font-size:12px; font-weight:800; }
     .details { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:rgba(255,255,255,.1); }
     .detail { min-height:73px; padding:13px 18px; background:var(--card); } .detail strong { display:block; margin-top:4px; font-size:14px; line-height:1.25; }
+    .checklist-box { padding:18px 19px; border-top:1px solid rgba(255,255,255,.1); }
+    .checklist-box h2 { margin:0 0 4px; font-size:14px; }
+    .checklist-sub { margin:0 0 13px; color:var(--muted); font-size:12px; }
+    .chk-resumo { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .chk-pill { font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:20px; border:1px solid; }
+    .chk-pill.ok { color:#3ecf8e; border-color:rgba(62,207,142,.45); background:rgba(62,207,142,.12); }
+    .chk-pill.def { color:#ef6b5e; border-color:rgba(239,107,94,.45); background:rgba(239,107,94,.12); }
+    .chk-pill.nt { color:#9ca3af; border-color:rgba(156,163,175,.4); background:rgba(156,163,175,.12); }
+    .chk-lista { display:flex; flex-direction:column; gap:6px; }
+    .chk-item { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#d6d3cd; }
+    .chk-marca { flex-shrink:0; width:15px; text-align:center; font-size:11px; }
+    .chk-item.def .chk-marca { color:#ef6b5e; }
+    .chk-item.nt .chk-marca { color:#9ca3af; }
     .timeline { padding:20px 19px 18px; }
     .timeline h2 { margin:0 0 15px; font-size:14px; } .step { position:relative; display:flex; gap:11px; padding-bottom:13px; color:#85837e; font-size:13px; }
     .step:last-child { padding-bottom:0; } .dot { position:relative; z-index:1; flex:0 0 12px; height:12px; margin-top:2px; border:2px solid #77756d; border-radius:50%; background:var(--card); }
@@ -110,6 +123,40 @@
         return `<div class="step ${state}"><span class="dot"></span><span>${stage}</span></div>`;
       }).join('')}</div>`;
     }
+    // Nomes dos itens do checklist, iguais aos do sistema da loja
+    const CHK_LABELS = {
+      liga:'Liga / dá imagem', carrega:'Carrega (conector)', bateria:'Bateria segura carga',
+      imagem:'Imagem sem manchas ou linhas', touch:'Touch responde em toda a tela', vidro:'Vidro sem trincos',
+      cam_tras:'Câmera traseira', cam_front:'Câmera frontal', biometria:'Face ID / Touch ID',
+      alto_falante:'Alto-falante (música)', auricular:'Auricular (chamada)', microfone:'Microfone', vibracao:'Vibração',
+      wifi:'Wi-Fi', chip:'Chip / rede móvel', botoes:'Botões (power e volume)', sensores:'Sensor de proximidade',
+      carcaca:'Carcaça sem amassados', tampa:'Tampa traseira íntegra', oxidacao:'Sem sinal de água / oxidação'
+    };
+    // Mostra como o aparelho chegou na loja. Lista só o que deu falha ou não pôde ser
+    // testado — o que está ok vira só a contagem, pra não virar uma lista gigante.
+    function checklistBox(os) {
+      const chk = os.checklist;
+      if (!chk || typeof chk !== 'object') return '';
+      const chaves = Object.keys(chk);
+      if (!chaves.length) return '';
+      const ok = chaves.filter(k => chk[k] === 'ok');
+      const def = chaves.filter(k => chk[k] === 'def');
+      const nt = chaves.filter(k => chk[k] === 'nt');
+      const quando = os.checklist_em ? new Date(os.checklist_em).toLocaleDateString('pt-BR') : null;
+      const linha = (k, cls, marca) =>
+        `<div class="chk-item ${cls}"><span class="chk-marca">${marca}</span><span>${escapeHTML(CHK_LABELS[k] || k)}</span></div>`;
+      const lista = def.map(k => linha(k, 'def', '✕')).concat(nt.map(k => linha(k, 'nt', '?'))).join('');
+      return `<div class="checklist-box">
+        <h2>Como o aparelho chegou</h2>
+        <p class="checklist-sub">Conferido pela loja na entrada${quando ? ' em ' + quando : ''}.</p>
+        <div class="chk-resumo">
+          ${ok.length ? `<span class="chk-pill ok">${ok.length} funcionando</span>` : ''}
+          ${def.length ? `<span class="chk-pill def">${def.length} com falha</span>` : ''}
+          ${nt.length ? `<span class="chk-pill nt">${nt.length} sem teste</span>` : ''}
+        </div>
+        ${lista ? `<div class="chk-lista">${lista}</div>` : ''}
+      </div>`;
+    }
     function renderOS(os) {
       const code = escapeHTML(os.codigo);
       const status = escapeHTML(os.status || 'Em análise');
@@ -123,6 +170,7 @@
       result.innerHTML = `<article class="os-card">
         <div class="os-top"><div><div class="eyebrow">Ordem de serviço</div><div class="code">${code}</div></div><div class="status">${status}</div></div>
         <div class="details"><div class="detail"><div class="eyebrow">Aparelho</div><strong>${escapeHTML(os.modelo || 'Não informado')}</strong></div><div class="detail"><div class="eyebrow">Entrada</div><strong>${formatDate(os.data)}</strong></div>${reparoHtml}${valorHtml}</div>
+        ${checklistBox(os)}
         ${timeline(os.status)}
         <p class="status-message">${escapeHTML(messages[os.status] || 'Acompanhe o andamento por esta página ou fale com a loja.')}</p>
       </article>`;
