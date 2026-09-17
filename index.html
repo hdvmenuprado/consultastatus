@@ -179,24 +179,70 @@
       // Deixa só o que faz parte do código, mantendo o traço.
       input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     });
+    // Trava contra clique repetido: enquanto uma busca está em andamento nada é enviado,
+    // e depois de cada consulta o botão fica alguns segundos em espera. A cada erro seguido
+    // a espera aumenta, pra desestimular ficar tentando código atrás de código.
+    // Isso é só a camada visual — o limite que vale de verdade está no banco.
+    let buscando = false;
+    let emEspera = false;
+    let errosSeguidos = 0;
+    let ultimoCodigo = '';
+
+    function esperar(segundos) {
+      emEspera = true;
+      let resta = segundos;
+      button.disabled = true;
+      const tick = () => {
+        button.textContent = resta > 0 ? `Aguarde ${resta}s` : 'Consultar';
+        if (resta <= 0) { emEspera = false; button.disabled = false; return; }
+        resta--; setTimeout(tick, 1000);
+      };
+      tick();
+    }
+
     form.addEventListener('submit', async event => {
       event.preventDefault();
+      if (buscando || emEspera) return;
+
       const code = input.value.trim().toUpperCase();
       // O código completo identifica a O.S. sozinho, sem precisar do telefone.
       if (!code.includes('-') || code.length < 8) {
         showNotice('Digite o código completo do cupom, com o traço (ex.: OS260831-E457).', 'error');
         return;
       }
-      button.disabled = true; button.textContent = 'Consultando...'; showNotice('Buscando sua ordem de serviço...', 'loading');
+      // Repetir a mesma busca não bate no servidor de novo.
+      if (code === ultimoCodigo && result.innerHTML.includes('os-card')) {
+        showNotice('Essa é a consulta que já está na tela.', 'error');
+        return;
+      }
+
+      buscando = true;
+      button.disabled = true; button.textContent = 'Consultando...';
+      showNotice('Buscando sua ordem de serviço...', 'loading');
       try {
         const { data, error } = await db.rpc('consultar_status_os', { p_codigo: code }).maybeSingle();
         if (error) throw error;
-        if (!data) showNotice('Não encontramos nenhuma O.S. com esse código. Confira no seu cupom e tente novamente.', 'error');
-        else renderOS(data);
+        if (!data) {
+          errosSeguidos++;
+          showNotice('Não encontramos nenhuma O.S. com esse código. Confira no seu cupom e tente novamente.', 'error');
+        } else {
+          errosSeguidos = 0;
+          ultimoCodigo = code;
+          renderOS(data);
+        }
       } catch (error) {
         console.error(error);
-        showNotice('Não foi possível consultar agora. Tente novamente em alguns instantes.', 'error');
-      } finally { button.disabled = false; button.textContent = 'Consultar'; }
+        if (String(error && (error.message || error.hint) || '').includes('MUITAS_TENTATIVAS')) {
+          errosSeguidos = 5;
+          showNotice('Muitas consultas seguidas. Espere alguns minutos e tente de novo.', 'error');
+        } else {
+          showNotice('Não foi possível consultar agora. Tente novamente em alguns instantes.', 'error');
+        }
+      } finally {
+        buscando = false;
+        // 3s no uso normal; sobe até 30s pra quem erra várias vezes seguidas.
+        esperar(errosSeguidos === 0 ? 3 : Math.min(30, 5 * errosSeguidos));
+      }
     });
   </script>
 </body>
