@@ -48,7 +48,16 @@
       font-size:14px; font-family:inherit; letter-spacing:.4px; text-transform:uppercase;
     }
     .btn-aprovar:hover:not(:disabled) { filter:brightness(1.08); }
-    .btn-aprovar:disabled { opacity:.55; cursor:not-allowed; }
+    .btn-aprovar:disabled, .btn-recusar:disabled { opacity:.55; cursor:not-allowed; }
+    .aprova-botoes { display:flex; gap:10px; flex-wrap:wrap; }
+    .aprova-botoes .btn-aprovar { flex:2 1 200px; }
+    .btn-recusar {
+      flex:1 1 130px; padding:14px; border-radius:10px; cursor:pointer;
+      background:transparent; border:1px solid rgba(239,107,94,.6); color:#ef6b5e;
+      font-weight:700; font-size:13px; font-family:inherit;
+    }
+    .btn-recusar:hover:not(:disabled) { background:rgba(239,107,94,.12); }
+    .aprova-feito.recusou { background:rgba(239,107,94,.12); border-color:rgba(239,107,94,.45); color:#ef6b5e; }
     .aprova-feito {
       display:flex; align-items:center; gap:9px; background:rgba(62,207,142,.12);
       border:1px solid rgba(62,207,142,.45); border-radius:10px; padding:12px 14px;
@@ -181,40 +190,55 @@
         const quando = new Date(os.aprovado_em).toLocaleDateString('pt-BR');
         return `<div class="aprova-box"><div class="aprova-feito">✓ Você aprovou este orçamento em ${quando}. A loja já foi avisada.</div></div>`;
       }
+      if (os.recusado_em) {
+        const quando = new Date(os.recusado_em).toLocaleDateString('pt-BR');
+        return `<div class="aprova-box"><div class="aprova-feito recusou">✕ Você não aprovou este orçamento em ${quando}. Fale com a loja para combinar a retirada.</div></div>`;
+      }
       if (os.status !== 'Aguardando aprov') return '';
       const valor = 'R$ ' + (Number(os.total) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return `<div class="aprova-box">
-        <h2>Orçamento aguardando sua aprovação</h2>
-        <p class="aprova-sub">Ao aprovar, autorizamos o início do serviço pelo valor abaixo. Em caso de dúvida, fale com a loja antes.</p>
+        <h2>Orçamento aguardando sua resposta</h2>
+        <p class="aprova-sub">Aprovando, você autoriza o início do serviço pelo valor abaixo. Em caso de dúvida, fale com a loja antes.</p>
         <div class="aprova-valor">${valor}</div>
-        <button class="btn-aprovar" id="btnAprovar" onclick="aprovarOrcamento()">Aprovar orçamento</button>
+        <div class="aprova-botoes">
+          <button class="btn-aprovar" id="btnAprovar" onclick="responderOrcamento(true)">Aprovar orçamento</button>
+          <button class="btn-recusar" id="btnRecusar" onclick="responderOrcamento(false)">Não aprovar</button>
+        </div>
         <div id="aprovaAviso" style="margin-top:10px;font-size:12.5px;"></div>
       </div>`;
     }
 
-    window.aprovarOrcamento = async function () {
+    window.responderOrcamento = async function (aprovar) {
       if (!_osAtual) return;
-      const btn = document.getElementById('btnAprovar');
+      const btnA = document.getElementById('btnAprovar');
+      const btnR = document.getElementById('btnRecusar');
       const aviso = document.getElementById('aprovaAviso');
-      if (!confirm('Confirmar a aprovação do orçamento? A loja vai iniciar o serviço.')) return;
-      btn.disabled = true; btn.textContent = 'Aprovando...';
+      const pergunta = aprovar
+        ? 'Confirmar a aprovação do orçamento? A loja vai iniciar o serviço.'
+        : 'Confirmar que você NÃO aprova este orçamento? O serviço não será feito.';
+      if (!confirm(pergunta)) return;
+      btnA.disabled = true; btnR.disabled = true;
+      (aprovar ? btnA : btnR).textContent = 'Enviando...';
       try {
-        const { data, error } = await db.rpc('aprovar_orcamento_os', { p_codigo: _osAtual.codigo }).maybeSingle();
+        const { data, error } = await db.rpc('responder_orcamento_os', { p_codigo: _osAtual.codigo, p_aprovar: aprovar }).maybeSingle();
         if (error) throw error;
         if (data && data.ok) {
-          _osAtual.aprovado_em = new Date().toISOString();
-          _osAtual.status = data.status || 'Orç aprovado';
+          if (aprovar) _osAtual.aprovado_em = new Date().toISOString();
+          else _osAtual.recusado_em = new Date().toISOString();
+          _osAtual.status = data.status || _osAtual.status;
           renderOS(_osAtual);
         } else {
           aviso.style.color = '#ef6b5e';
-          aviso.textContent = (data && data.mensagem) || 'Não foi possível aprovar agora.';
-          btn.disabled = false; btn.textContent = 'Aprovar orçamento';
+          aviso.textContent = (data && data.mensagem) || 'Não foi possível registrar agora.';
+          btnA.disabled = false; btnR.disabled = false;
+          btnA.textContent = 'Aprovar orçamento'; btnR.textContent = 'Não aprovar';
         }
       } catch (e) {
         console.error(e);
         aviso.style.color = '#ef6b5e';
-        aviso.textContent = 'Não foi possível aprovar agora. Tente de novo em instantes.';
-        btn.disabled = false; btn.textContent = 'Aprovar orçamento';
+        aviso.textContent = 'Não foi possível registrar agora. Tente de novo em instantes.';
+        btnA.disabled = false; btnR.disabled = false;
+        btnA.textContent = 'Aprovar orçamento'; btnR.textContent = 'Não aprovar';
       }
     };
 
