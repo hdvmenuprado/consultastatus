@@ -63,6 +63,24 @@
       </div>
       <div class="grupo"><label for="endereco">Endereço <span class="opc">(opcional)</span></label><input id="endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade" maxlength="250"></div>
 
+      <div class="secao">Sua compra</div>
+      <div class="grupo"><label for="produto">Celular que comprou</label><input id="produto" placeholder="Ex.: iPhone 13 128GB" maxlength="120"></div>
+      <div class="duas">
+        <div class="grupo"><label for="valorAparelho">Valor do celular</label><input id="valorAparelho" inputmode="numeric" placeholder="R$ 0,00" maxlength="16"></div>
+        <div class="grupo"><label for="forma">Forma de pagamento</label>
+          <select id="forma">
+            <option value="">Selecione...</option>
+            <option>Pix</option>
+            <option>Dinheiro</option>
+            <option>Cartão de Débito</option>
+            <option>Cartão de Crédito</option>
+            <option>Boleto</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="grupo"><label for="valorPago">Quanto você pagou</label><input id="valorPago" inputmode="numeric" placeholder="R$ 0,00" maxlength="16"></div>
+
       <div class="secao">Aparelho na troca</div>
       <div class="grupo"><label for="troca">Vai dar um aparelho na troca? <span class="opc">(se não, deixe em branco)</span></label><input id="troca" placeholder="Ex.: iPhone 11 128GB" maxlength="120"></div>
 
@@ -100,6 +118,17 @@
     e.target.value = d;
   });
 
+  // Dinheiro: digita só números e vai formando R$ 1.234,56
+  function mascaraDinheiro(el) {
+    el.addEventListener('input', () => {
+      const d = el.value.replace(/\D/g, '').slice(0, 9);
+      if (!d) { el.value = ''; return; }
+      el.value = 'R$ ' + (parseInt(d, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    });
+  }
+  mascaraDinheiro($('valorAparelho')); mascaraDinheiro($('valorPago'));
+  function lerDinheiro(el) { const d = el.value.replace(/\D/g, ''); return d ? parseInt(d, 10) / 100 : null; }
+
   function erro(msg) { const a = $('aviso'); a.className = 'aviso erro'; a.textContent = msg; }
 
   $('form').addEventListener('submit', async ev => {
@@ -111,6 +140,10 @@
     if (nome.length < 3) return erro('Informe seu nome completo.');
     if (tel.length < 10) return erro('Informe seu WhatsApp com DDD.');
     if (cpf && cpf.length !== 11) return erro('O CPF ficou incompleto.');
+    if (!$('produto').value.trim()) return erro('Informe qual celular você comprou.');
+    if (!lerDinheiro($('valorAparelho'))) return erro('Informe o valor do celular.');
+    if (!$('forma').value) return erro('Escolha a forma de pagamento.');
+    if (!lerDinheiro($('valorPago'))) return erro('Informe quanto você pagou.');
     if (!$('lgpd').checked) return erro('Marque a autorização para continuar.');
 
     const btn = $('enviar');
@@ -119,7 +152,9 @@
       const { data, error } = await db.rpc('enviar_pre_cadastro', {
         p_nome: nome, p_cpf: $('cpf').value, p_telefone: $('telefone').value,
         p_endereco: $('endereco').value, p_nascimento: $('nascimento').value || null,
-        p_origem: $('origem').value, p_aparelho_troca: $('troca').value, p_loja: loja || null
+        p_origem: $('origem').value, p_aparelho_troca: $('troca').value, p_loja: loja || null,
+        p_produto: $('produto').value, p_valor_aparelho: lerDinheiro($('valorAparelho')),
+        p_forma_pagamento: $('forma').value, p_valor_pago: lerDinheiro($('valorPago'))
       }).maybeSingle();
       if (error) throw error;
       if (!data || !data.ok) { erro((data && data.mensagem) || 'Não foi possível enviar. Tente de novo.'); return; }
