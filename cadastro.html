@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de cliente — Prado Celulares</title>
+  <meta name="robots" content="noindex">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --bg:#0b0b0d; --card:#17171b; --card-2:#202025; --ink:#f4f1e8; --muted:#b9b7b1; --gold:#d4af37; --line:rgba(212,175,55,.42); --green:#65cb89; --red:#fa7676; }
+    * { box-sizing:border-box; }
+    body { min-height:100vh; margin:0; background:radial-gradient(circle at 50% -15%,#3a2e09 0,transparent 35%),var(--bg); color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+    main { width:min(100% - 32px, 520px); margin:0 auto; padding:40px 0 50px; }
+    .brand { text-align:center; color:var(--gold); font-weight:800; letter-spacing:3px; text-transform:uppercase; font-size:13px; margin-bottom:10px; }
+    h1 { text-align:center; margin:0 0 8px; font-size:26px; }
+    .intro { text-align:center; color:var(--muted); font-size:14.5px; line-height:1.5; margin:0 auto 26px; max-width:420px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
+    .grupo { margin-bottom:16px; }
+    label { display:block; margin-bottom:7px; font-size:12px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; color:var(--muted); }
+    label .opc { text-transform:none; letter-spacing:0; font-weight:400; color:#8a8781; }
+    input, select { width:100%; height:48px; padding:0 14px; border-radius:10px; border:1px solid #34343a; background:var(--card-2); color:var(--ink); font-size:16px; font-family:inherit; }
+    input:focus, select:focus { outline:none; border-color:var(--gold); }
+    .duas { display:flex; gap:12px; } .duas .grupo { flex:1; }
+    .secao { margin:22px 0 14px; padding-top:18px; border-top:1px solid #2a2a30; color:var(--gold); font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    .lgpd { display:flex; gap:10px; align-items:flex-start; margin:18px 0 4px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+    .lgpd input { width:20px; height:20px; flex-shrink:0; margin-top:1px; accent-color:var(--gold); }
+    button { width:100%; height:52px; margin-top:16px; border:none; border-radius:11px; background:linear-gradient(135deg,var(--gold),#a6841e); color:#1a1204; font-size:15px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; cursor:pointer; font-family:inherit; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .aviso { margin-top:14px; padding:12px 14px; border-radius:10px; font-size:14px; display:none; }
+    .aviso.erro { display:block; color:#ffd8d8; background:rgba(207,63,63,.16); border:1px solid rgba(250,118,118,.45); }
+    .sucesso { text-align:center; padding:30px 10px; display:none; }
+    .sucesso .ok { width:64px; height:64px; border-radius:50%; margin:0 auto 18px; display:flex; align-items:center; justify-content:center; background:rgba(101,203,137,.15); border:2px solid var(--green); color:var(--green); font-size:32px; }
+    .sucesso h2 { margin:0 0 8px; font-size:22px; }
+    .sucesso p { color:var(--muted); margin:0; line-height:1.55; font-size:15px; }
+    @media (max-width:420px) { .duas { flex-direction:column; gap:0; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">Prado Celulares</div>
+  <h1>Seu cadastro</h1>
+  <p class="intro">Preencha seus dados pra agilizar o atendimento. Ao terminar, avise o vendedor.</p>
+
+  <div class="card" id="formCard">
+    <form id="form" novalidate>
+      <div class="grupo"><label for="nome">Nome completo</label><input id="nome" autocomplete="name" maxlength="120" required></div>
+      <div class="duas">
+        <div class="grupo"><label for="telefone">WhatsApp</label><input id="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(45) 99999-9999" maxlength="16" required></div>
+        <div class="grupo"><label for="cpf">CPF <span class="opc">(opcional)</span></label><input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"></div>
+      </div>
+      <div class="duas">
+        <div class="grupo"><label for="nascimento">Nascimento <span class="opc">(opcional)</span></label><input id="nascimento" type="date"></div>
+        <div class="grupo"><label for="origem">Como conheceu a loja?</label>
+          <select id="origem">
+            <option value="">Selecione...</option>
+            <option value="Cliente de Porta">Passei na frente</option>
+            <option value="Cliente Google">Google</option>
+            <option value="Cliente Meta">Instagram / Facebook</option>
+            <option value="Cliente Indicação">Indicação</option>
+            <option value="Cliente Antigo">Já sou cliente</option>
+          </select>
+        </div>
+      </div>
+      <div class="grupo"><label for="endereco">Endereço <span class="opc">(opcional)</span></label><input id="endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade" maxlength="250"></div>
+
+      <div class="secao">Aparelho na troca</div>
+      <div class="grupo"><label for="troca">Vai dar um aparelho na troca? <span class="opc">(se não, deixe em branco)</span></label><input id="troca" placeholder="Ex.: iPhone 11 128GB" maxlength="120"></div>
+
+      <label class="lgpd"><input type="checkbox" id="lgpd"> <span>Autorizo a Prado Celulares a usar estes dados para o meu cadastro, garantia e contato sobre a minha compra.</span></label>
+
+      <button type="submit" id="enviar">Enviar cadastro</button>
+      <div class="aviso" id="aviso"></div>
+    </form>
+  </div>
+
+  <div class="card sucesso" id="sucesso">
+    <div class="ok">✓</div>
+    <h2>Cadastro recebido!</h2>
+    <p>Obrigado! Agora é só avisar o vendedor que você já preencheu.</p>
+  </div>
+</main>
+
+<script>
+  const db = supabase.createClient('https://tfnwojtykhapgjhljxve.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmbndvanR5a2hhcGdqaGxqeHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDI4NDAsImV4cCI6MjEwMjIxODg0MH0.HCDfHQodhpVla_9E5aGIYcY1edAPAYBumoFlvkS8x3c');
+  // O QR code de cada loja leva ?loja=norte ou ?loja=sul, pra o cadastro cair na loja certa
+  const loja = (new URLSearchParams(location.search).get('loja') || '').replace(/[^a-z]/gi, '').slice(0, 10);
+  const $ = id => document.getElementById(id);
+
+  // Máscaras simples enquanto digita
+  $('telefone').addEventListener('input', e => {
+    let d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    if (d.length > 10) d = d.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+    else if (d.length > 6) d = d.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    else if (d.length > 2) d = d.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+    e.target.value = d;
+  });
+  $('cpf').addEventListener('input', e => {
+    let d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    d = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = d;
+  });
+
+  function erro(msg) { const a = $('aviso'); a.className = 'aviso erro'; a.textContent = msg; }
+
+  $('form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    $('aviso').className = 'aviso';
+    const nome = $('nome').value.trim();
+    const tel = $('telefone').value.replace(/\D/g, '');
+    const cpf = $('cpf').value.replace(/\D/g, '');
+    if (nome.length < 3) return erro('Informe seu nome completo.');
+    if (tel.length < 10) return erro('Informe seu WhatsApp com DDD.');
+    if (cpf && cpf.length !== 11) return erro('O CPF ficou incompleto.');
+    if (!$('lgpd').checked) return erro('Marque a autorização para continuar.');
+
+    const btn = $('enviar');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+    try {
+      const { data, error } = await db.rpc('enviar_pre_cadastro', {
+        p_nome: nome, p_cpf: $('cpf').value, p_telefone: $('telefone').value,
+        p_endereco: $('endereco').value, p_nascimento: $('nascimento').value || null,
+        p_origem: $('origem').value, p_aparelho_troca: $('troca').value, p_loja: loja || null
+      }).maybeSingle();
+      if (error) throw error;
+      if (!data || !data.ok) { erro((data && data.mensagem) || 'Não foi possível enviar. Tente de novo.'); return; }
+      $('formCard').style.display = 'none';
+      $('sucesso').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      console.error(e);
+      erro('Não foi possível enviar agora. Confira sua internet e tente de novo.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enviar cadastro';
+    }
+  });
+</script>
+</body>
+</html>
