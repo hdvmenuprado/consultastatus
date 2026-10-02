@@ -17,6 +17,7 @@
     .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
     .grupo { margin-bottom:16px; }
     label { display:block; margin-bottom:7px; font-size:12px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; color:var(--muted); }
+    label .obrig { color:var(--gold); }
     label .opc { text-transform:none; letter-spacing:0; font-weight:400; color:#8a8781; }
     input, select { width:100%; height:48px; padding:0 14px; border-radius:10px; border:1px solid #34343a; background:var(--card-2); color:var(--ink); font-size:16px; font-family:inherit; }
     input:focus, select:focus { outline:none; border-color:var(--gold); }
@@ -39,17 +40,17 @@
 <main>
   <div class="brand">Prado Celulares</div>
   <h1>Seu cadastro</h1>
-  <p class="intro">Preencha seus dados pra agilizar o atendimento. Ao terminar, avise o vendedor.</p>
+  <p class="intro">Preencha seus dados pra agilizar o atendimento. Só o nome é obrigatório — o que não souber, pode deixar em branco.</p>
 
   <div class="card" id="formCard">
     <form id="form" novalidate>
-      <div class="grupo"><label for="nome">Nome completo</label><input id="nome" autocomplete="name" maxlength="120" required></div>
+      <div class="grupo"><label for="nome">Nome completo <span class="obrig">*</span></label><input id="nome" autocomplete="name" maxlength="120" required></div>
       <div class="duas">
         <div class="grupo"><label for="telefone">WhatsApp</label><input id="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(45) 99999-9999" maxlength="16" required></div>
-        <div class="grupo"><label for="cpf">CPF <span class="opc">(opcional)</span></label><input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"></div>
+        <div class="grupo"><label for="cpf">CPF</label><input id="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"></div>
       </div>
       <div class="duas">
-        <div class="grupo"><label for="nascimento">Nascimento <span class="opc">(opcional)</span></label><input id="nascimento" type="date"></div>
+        <div class="grupo"><label for="nascimento">Nascimento</label><input id="nascimento" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="bday"></div>
         <div class="grupo"><label for="origem">Como conheceu a loja?</label>
           <select id="origem">
             <option value="">Selecione...</option>
@@ -61,7 +62,7 @@
           </select>
         </div>
       </div>
-      <div class="grupo"><label for="endereco">Endereço <span class="opc">(opcional)</span></label><input id="endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade" maxlength="250"></div>
+      <div class="grupo"><label for="endereco">Endereço</label><input id="endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade" maxlength="250"></div>
 
       <div class="secao">Sua compra</div>
       <div class="grupo"><label for="produto">Celular que comprou</label><input id="produto" placeholder="Ex.: iPhone 13 128GB" maxlength="120"></div>
@@ -118,6 +119,24 @@
     e.target.value = d;
   });
 
+  // Nascimento: digita só os números e as barras aparecem sozinhas (DD/MM/AAAA)
+  $('nascimento').addEventListener('input', e => {
+    const d = e.target.value.replace(/\D/g, '').slice(0, 8);
+    e.target.value = d.length > 4 ? d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4)
+                   : d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+  });
+  // Converte pra AAAA-MM-DD. Data que não existe (31/02, ano incompleto) vai em branco
+  // em vez de travar o envio.
+  function lerData(v) {
+    const m = (v || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    const dia = +m[1], mes = +m[2], ano = +m[3];
+    const dt = new Date(ano, mes - 1, dia);
+    if (dt.getFullYear() !== ano || dt.getMonth() !== mes - 1 || dt.getDate() !== dia) return null;
+    if (ano < 1900 || dt > new Date()) return null;
+    return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+  }
+
   // Dinheiro: digita só números e vai formando R$ 1.234,56
   function mascaraDinheiro(el) {
     el.addEventListener('input', () => {
@@ -135,15 +154,8 @@
     ev.preventDefault();
     $('aviso').className = 'aviso';
     const nome = $('nome').value.trim();
-    const tel = $('telefone').value.replace(/\D/g, '');
-    const cpf = $('cpf').value.replace(/\D/g, '');
-    if (nome.length < 3) return erro('Informe seu nome completo.');
-    if (tel.length < 10) return erro('Informe seu WhatsApp com DDD.');
-    if (cpf && cpf.length !== 11) return erro('O CPF ficou incompleto.');
-    if (!$('produto').value.trim()) return erro('Informe qual celular você comprou.');
-    if (!lerDinheiro($('valorAparelho'))) return erro('Informe o valor do celular.');
-    if (!$('forma').value) return erro('Escolha a forma de pagamento.');
-    if (!lerDinheiro($('valorPago'))) return erro('Informe quanto você pagou.');
+    // Só o nome é obrigatório: sem ele o vendedor não acha o cliente na lista
+    if (nome.length < 2) return erro('Informe seu nome.');
     if (!$('lgpd').checked) return erro('Marque a autorização para continuar.');
 
     const btn = $('enviar');
@@ -151,7 +163,7 @@
     try {
       const { data, error } = await db.rpc('enviar_pre_cadastro', {
         p_nome: nome, p_cpf: $('cpf').value, p_telefone: $('telefone').value,
-        p_endereco: $('endereco').value, p_nascimento: $('nascimento').value || null,
+        p_endereco: $('endereco').value, p_nascimento: lerData($('nascimento').value),
         p_origem: $('origem').value, p_aparelho_troca: $('troca').value, p_loja: loja || null,
         p_produto: $('produto').value, p_valor_aparelho: lerDinheiro($('valorAparelho')),
         p_forma_pagamento: $('forma').value, p_valor_pago: lerDinheiro($('valorPago'))
